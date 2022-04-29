@@ -1,27 +1,3 @@
-const int test_word_list_len = 4;
-
-const char *test_word_list[4] = {
-  "abcde",
-  "lmnop",
-  "aaaaa",
-  "qrstu"
-};
-
-const int small_word_list_len = 9;
-
-const char *small_word_list[9] = {
-  "adcee",
-  "babed",
-  "caded",
-  "debec",
-  "beadd",
-  "deabb",
-  "ebedc",
-  "eeeee",
-  "bbbbb"
-};
-
-
 const int wordle_word_list_len = 2309;
 
 char *wordle_word_list[2309] = {
