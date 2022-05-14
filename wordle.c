@@ -1,194 +1,266 @@
+
 #include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
-#include <math.h>
+#include <string.h>
+#include <stdlib.h>
 #include "wordle.h"
-#include "wordlist.h"
 
-const double ERROR = 0.00001;
+// see wordle.h
+char to_uppercase(char ch) {
+  assert((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
 
-static char *num_to_word(const int *numbers, const char *word) {
-    char *output = malloc(6 * sizeof(char));
-    for (int i = 0; i < 5; i++) {
-        if (numbers[i] == 0) {
-            output[i] = '.';
-        } else if (numbers[i] == 1) {
-            output[i] = to_lowercase(word[i]); 
-        } else {
-            assert(numbers[i] == 2);
-            output[i] = to_uppercase(word[i]);
-        }
-    }
-    output[5] = '\0';
-    return output;
+  if (ch >= 'A' && ch <= 'Z') {
+    return ch;
+  } else {
+    return ch - 'a' + 'A';
+  }
 }
 
-// expected_value(guess, secret_word, possible_solutions) determines the expected number 
-//      of possible solutions remaining for guess given the current list of possible solutions
-//      and the secret word
-// requires: length of guess and secret_word is 5
-// time: Checks all 3^5 possible outcomes
-static double expected_value(char *guess,  
-                             char *possible_solutions[], double possible_solutions_len) {
-    assert(guess);
-    assert(possible_solutions);
+// see wordle.h
+char to_lowercase(char ch) {
+  assert((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
 
-    double output = 0;
-
-    char **possible_solutions_dup = malloc(possible_solutions_len * sizeof(char *));
-    for (int i = 0; i < possible_solutions_len; i++) {
-        possible_solutions_dup[i] = malloc((strlen(possible_solutions[i]) + 1) * sizeof(char));
-        strcpy(possible_solutions_dup[i], possible_solutions[i]);
-    }
-
-    // 0 is miss, 1 is yellow, 2 is green
-    for (int a = 0; a <= 2; a++) {
-        for (int b = 0; b <= 2; b++) {
-            for (int c = 0; c <= 2; c++) {
-                for (int d = 0; d <= 2; d++) {
-                    for (int e = 0; e <= 2; e++) {
-                        int guess_result[5] = {a, b, c, d, e};
-                        char *result = num_to_word(guess_result, guess);
-                        char *result_array[1] = {result};
-                        char *guess_array[1] = {guess};
-                        int num_words_remaining = 
-                        find_solution(guess_array, result_array, 1,
-                                      possible_solutions, possible_solutions_len,
-                                      possible_solutions_dup, possible_solutions_len);
-                        /*printf("%s: ", result);
-                        printf("%d\n", num_words_remaining);*/
-                        output += (num_words_remaining / possible_solutions_len) * num_words_remaining;
-                        free(result);
-                    }
-                }
-            }
-        }
-    }
-    // printf("End Loop1\n");
-    for (int i = 0; i < possible_solutions_len; i++) {
-        free(possible_solutions_dup[i]);
-    }
-    free(possible_solutions_dup);
-    // printf("End Loop1\n");
-    return output;
+  if (ch >= 'a' && ch <= 'z') {
+    return ch;
+  } else {
+    return ch - 'A' + 'a';
+  }
 }
 
-static bool contains_word(const char *word, char *strarr[], int len) {
-    assert(word);
-    assert(strarr);
-    for (int i = 0; i < len; i++) {
-        assert(strarr[i]);
-        if (strcmp(word, strarr[i]) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
+// see wordle.h
+bool evaluate_guess(const char *secret, const char *guess, char *result) {
+  assert(secret);
+  assert(guess);
+  assert(result);
+  assert(strlen(secret) == strlen(guess));
+  
+  int len = strlen(secret);
 
-int main(void) {
+  // if at any point guess[i] != secret[i], switch this to false
+  bool output = true;
 
-    int word_idx = -1;
-    printf("Please enter a valid word number between 0 and %d\n", wordle_word_list_len - 1);
-    int result = scanf("%d", &word_idx);
-    assert(0 <= word_idx && word_idx <= wordle_word_list_len - 1);
-    char *secret_word = wordle_word_list[word_idx];
+  // array to keep track how many times each leter occurs in secret
 
-    int num_possible_solutions = wordle_word_list_len;
-    char *possible_solutions[10000] = {0};
+  int letter_counter[128] = {0};
 
-    for (int i = 0; i < num_possible_solutions; i++) {
-        possible_solutions[i] = wordle_word_list[i];
-    }
-    
-    int guess_counter = 1;
+  // initially assume all guess is wrong
 
-    // raise is best first guess
+  for (int i = 0; i < len; i++) {
+    result[i] = '.';
+  }
+  
+  // tallying up the letters in secret
 
-    char first_guess[6] = "raise";
-    char first_result[6] = ".....";
-    bool first_correct = evaluate_guess(secret_word, first_guess, first_result);
-    char *result_array[1] = {first_result};
-    char *guess_array[1] = {first_guess};
-    
-    if (first_correct) {
-        printf("Raise is the secret word (guessed in 1)");
+  for (int i = 0; i < len; i++) {
+    int ascii_value = secret[i];
+    letter_counter[ascii_value]++;
+  } 
+
+  // first find all correctly placed letters in guess
+
+  for (int i = 0; i < len; i++) {
+    int ascii_value = guess[i];
+    if (secret[i] == guess[i]) {
+      result[i] = to_uppercase(guess[i]);
+      letter_counter[ascii_value]--;
     } else {
-        num_possible_solutions = find_solution(guess_array, result_array, 1,
-                                               possible_solutions, num_possible_solutions,
-                                               possible_solutions, num_possible_solutions);
-        printf("Guess: %s\n", first_guess);
-        printf("Result: %s\n", first_result);
-        printf("Number of remaining words: %d\n", num_possible_solutions);
-        printf("Remaining Words: \n");
-        for (int i = 0; i < num_possible_solutions; i++) {
-            printf("%s\n", possible_solutions[i]);
-        }
-        guess_counter++;
+      output = false;
     }
+  }
 
-    while (num_possible_solutions >= 1) {
-        printf("Num Possible Solutions: %d\n", num_possible_solutions);
-        // for each possible word that we can guess, determine the expected value
-        // of the number of words left
+  // fill in any possible remaining duplicates as lowercase
 
-        // use that word as our next guess
+  for (int i = 0; i < len; i++) {
+    int ascii_value = guess[i];
+    if (letter_counter[ascii_value] > 0 && result[i] != to_uppercase(guess[i])) {
+      result[i] = to_lowercase(guess[i]);
+      letter_counter[ascii_value]--;
+    } 
+  }
+  //null terminate result
+  result[len] = '\0';
+  
+  return output;
+}
 
-        double min_expected_words = num_possible_solutions;
-        char *next_guess = malloc(6 * sizeof(char));
 
-        if (num_possible_solutions != 1) {
-            for (int i = 0; i < wordle_word_list_len; i++) {
-                double expected_words = expected_value(wordle_word_list[i], 
-                                                       possible_solutions, num_possible_solutions);
-                if (expected_words < min_expected_words) {
-                    min_expected_words = expected_words;
-                    strcpy(next_guess, wordle_word_list[i]);
-                    printf("%s: ", wordle_word_list[i]);
-                    printf("%f\n", expected_words);
-                } else if (fabs(expected_words - min_expected_words) < ERROR &&
-                           contains_word(wordle_word_list[i], possible_solutions, num_possible_solutions)) {
-                    // if the expected values are equal, we prefer words that are possible solutions
-                    strcpy(next_guess, wordle_word_list[i]);
-                    printf("%s: ", wordle_word_list[i]);
-                    printf("%f\n", expected_words);  
-                }
-            }
+// see wordle.h
+int find_in_list(const char *guess, char *word_list[], int num_words) {
+  assert(guess);
+  assert(word_list);
+  assert(num_words >= 0);
+  int left = 0;
+  int right = num_words - 1;
 
-            printf("%dth guess: ", guess_counter);
-            printf("%s\n", next_guess);
-            printf("Expected value: %f\n", min_expected_words);
-            char result[6] = ".....";
+  while (left <= right) {
+    int mid = (left + right) / 2;
+    int compare_result = strcmp(guess, word_list[mid]);
+    if (compare_result == 0) {
+      return mid;
+    } else if (compare_result < 0) {
+      // guess precedes word_list[mid] alphabetically
+      right = mid - 1;
+    } else {
+      // guess follows word_list[mid] alphabetically
+      left = mid + 1;
+    }  
+  }
+  return -1;
+}
 
-            evaluate_guess(secret_word, next_guess, result);
-            char *result_array[1] = {result};
-            char *guess_array[1] = {next_guess};
 
-            num_possible_solutions = find_solution(guess_array, result_array, 1,
-                                                   possible_solutions, num_possible_solutions,
-                                                   possible_solutions, num_possible_solutions);
-        
-            if (strcmp(next_guess, secret_word) == 0) {
-                printf("Answer in %d guesses: %s", guess_counter, next_guess);
-                num_possible_solutions--;
-            } else {
-                guess_counter++;
-                printf("Result: %s\n", result);
-                printf("Number of remaining words: %d\n", num_possible_solutions);
-                printf("Remaining Words: \n");
-                for (int i = 0; i < num_possible_solutions; i++) {
-                    printf("%s\n", possible_solutions[i]);
-                }
-            }
-        } else {
-            strcpy(next_guess, possible_solutions[0]);
-            printf("%dth guess: ", guess_counter);
-            printf("%s\n", next_guess);
-            assert(strcmp(next_guess, secret_word) == 0);
-            printf("Answer in %d guesses: %s", guess_counter, next_guess);
-            num_possible_solutions--;
-        }
-        free(next_guess);
+// see wordle.h
+void available_letters(char *guesses[], char *results[], int num_guesses,
+                       char *alphabet) {
+  assert(guesses);
+  assert(results);
+  assert(num_guesses >= 0);
+  assert(alphabet);
+  for (int i = 0; i < num_guesses; i++) {
+    assert(guesses[i]);
+    assert(results[i]);
+    assert(strlen(guesses[i]) == strlen(results[i]));
+  }
+
+  // default set alphabet to be "abcdefghijklmnopqrstuvwxyz\0" (all lowercase)
+  for (char ch = 'a'; ch <= 'z'; ch++) {
+    alphabet[ch - 'a'] = ch;
+  }
+  alphabet[26] = '\0';
+
+  int guess_length = strlen(guesses[0]);
+
+  for (int i = 0; i < num_guesses; i++) {
+    for (int j = 0; j < guess_length; j++) {
+      // if ch = guesses[i][j] is either a yellow or green, we then know
+      // that ch is contained in the secret word
+      // thus we have to update alphabet to uppercase
+      // if results[i][j] is a period, then ch is not contained in word,
+      // update alphabet to '.'
+      char ch = guesses[i][j];
+      if (results[i][j] == '.') {
+        alphabet[ch - 'a'] = '.';
+      } else if (ch == to_lowercase(results[i][j])) {
+        alphabet[ch - 'a'] = to_uppercase(ch);
+      }
     }
+  }
+}
+
+// contains(item, word) determines if item is contained in word
+// requires: word is not null
+// effects: none
+// time: O(n) where n is length of word
+bool contains(char item, const char *word) {
+  assert(word);
+  while (*word) {
+    if (item == *word) {
+      return true;
+    }
+    word++;
+  }
+  return false;
+}
+
+// see wordle.h
+bool valid_hard_guess(char *guesses[], char *results[], int num_guesses,
+                      const char *next_guess) {
+
+  assert(guesses);
+  assert(results);
+  assert(next_guess);
+  assert(num_guesses >= 0);
+  for (int i = 0; i < num_guesses; i++) {
+    assert(guesses[i]);
+    assert(results[i]);
+    assert(strlen(guesses[i]) == strlen(results[i]));
+  }
+
+  // assume that output is true, if any of the 4 conditions are not satisfied
+  // change output to false
+  int guess_length = strlen(guesses[0]);
+
+  //    A previously correctly positioned letter must be used in the same spot
+  //    in next_guess
+
+  // O(num_guesses * m)
+  for (int i = 0; i < num_guesses; i++) {
+    for (int j = 0; j < guess_length; j++) {
+      char ch = guesses[i][j];
+      if (results[i][j] == to_uppercase(ch) && next_guess[j] != ch) {
+        return false;
+      } 
+    }
+  }
+
+  //    A letter from the secret word that showed up in a wrong spot in 
+  //       guesses cannot be used in the same spot in next_guess.
+
+  // O(num_guesses * m)
+  for (int i = 0; i < num_guesses; i++) {
+    for (int j = 0; j < guess_length; j++) {
+      char ch = guesses[i][j];
+      if (results[i][j] == ch && next_guess[j] == ch) {
+        return false;
+      } 
+    }
+  }
+
+  //    A letter from the secret word that showed up in a wrong spot in 
+  //       guesses should be used in next_guess.
+  //    A letter that was previous identified as not part of the secret word 
+  //        cannot be used in next_guess.
+  char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
+  // O(num_guesses * m)
+  available_letters(guesses, results, num_guesses, alphabet);
+
+  // O(m)
+  for (char ch = 'a'; ch <= 'z'; ch++) {
+    if (alphabet[ch - 'a'] == '.' && contains(ch, next_guess)) {
+      return false;
+    } else if (alphabet[ch - 'a'] == to_uppercase(ch) && 
+               !contains(ch, next_guess)){
+      return false;
+    }
+  }
+  
+  // if passes all checks, it is valid
+  return true;
+}
+
+
+// see wordle.h
+int find_solution(char *guesses[], char *results[], int num_guesses,
+                  char *word_list[], int num_words,
+                  char *solutions[], int max_solutions) {
+  assert(guesses);
+  assert(results);
+  assert(num_guesses >= 0);
+  assert(max_solutions >= 1);
+  
+  int counter = 0;
+
+  for (int i = 0; i < num_words; i++) {
+    bool valid_secret_word = true;
+    for (int j = 0; j < num_guesses; j++) {
+      // for each guess, check if evaluate_guess(secret_word, guesses[j], result) leads to results[j]
+
+      // first make copy of results[j]
+      char * result_cpy = malloc((strlen(results[j]) + 1) * sizeof(char));
+      strcpy(result_cpy, results[j]);
+      
+      // see if the result changes
+      evaluate_guess(word_list[i], guesses[j], result_cpy);
+      if (strcmp(result_cpy, results[j]) != 0) {
+        valid_secret_word = false;
+      }
+      free(result_cpy);
+    }
+    if (valid_secret_word) {
+      solutions[counter] = word_list[i];
+      counter++;
+    }
+  }
+  
+  return counter;
 }
