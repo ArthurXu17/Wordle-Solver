@@ -38,6 +38,66 @@ char to_lowercase(char ch);
 // time: O(n)
 bool evaluate_guess(const char *secret, const char *guess, char *result);
 
+
+// find_in_list(guess, word_list, num_words) finds the index of the string 
+//    matching guess in word_list, or -1 if no match is found
+// example:
+//   char *words[3] = { "goodbye", "hello", "hurray" };
+//   find_in_list("goodbye", words, 3) => 0
+// requires: word_list is sorted lexicographically in ascending order 
+//           [not asserted]
+// time: O(m * log(num_words)), where m is the length of guess
+int find_in_list(const char *guess, char *word_list[], int num_words);
+
+
+// available_letters(guesses, results, num_guesses, alphabet) determines the 
+//   status of each alphabet letter a...z in the secret word, based on results
+//   of existing guesses; the result is stored in alphabet as an "alphabet
+//   string" (null terminated), where each of a..z is:
+//     . (period), if the letter does not exist in secret word
+//     lowercase letter, if the status of the letter is unknown
+//     UPPERCASE letter, if the letter exists in secret word
+// example: char alphabet[27]
+//          char *guesses[2] = { "apple", "touch" };
+//          char *results[2] = { ".pp..", ".OUCH" };
+//          available_letters(guesses, results, 2, alphabet);
+//          alphabet => ".bCd.fgHijk.mnOPqrs.Uvwxyz"
+// requires: first "num_guesses" elements in guesses and results are valid
+//           strings of the same length
+//           alphabet is sufficiently large [not asserted]
+//           num_guesses >= 0
+// effects: alphabet is modified
+// time: O(num_guesses * m) where m is the length of each guess
+void available_letters(char *guesses[], char *results[], int num_guesses,
+                       char *alphabet);
+
+
+// valid_hard_guess(guesses, results, num_guesses, next_guess) evaluates 
+//    whether or not next_guess is a valid attempt, given existing guesses, 
+//    when playing Wordle in hard mode which requires that
+//    "any revealed hints must be used in subsequent guesses", i.e.
+//    A previously correctly positioned letter must be used in the same spot
+//       in next_guess.
+//    A letter from the secret word that showed up in a wrong spot in guesses
+//       cannot be used in the same spot in next_guess.
+//    A letter from the secret word that showed up in a wrong spot in guesses
+//       should be used in next_guess.
+//    A letter that was previous identified as not part of the secret word 
+//        cannot be used in next_guess.
+// examples: char *guesses[1] = { "apple" };
+//           char *results[1] = { ".pp.." };
+//           valid_hard_guess(guesses, results, 1, "touch") => false
+//           valid_hard_guess(guesses, results, 1, "pouch") => true
+//           valid_hard_guess(guesses, results, 1, "spout") => false
+// requires: first "num_guesses" elements in guesses and results are valid
+//           strings of the same length
+//           length of next_guess matches length of strings in guesses
+//           num_guesses >= 0
+// time: O(num_guesses * m^2) where m is the length of each guess
+bool valid_hard_guess(char *guesses[], char *results[], int num_guesses,
+                      const char *next_guess);
+
+
 // find_solution(guesses, results, num_guesses, 
 //               word_list, num_words,
 //               solutions, max_solutions) returns the number of potential valid
