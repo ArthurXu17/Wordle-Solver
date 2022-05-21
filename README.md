@@ -2,7 +2,7 @@
 
 ### What is Wordle?
 
-On the off-chance that you don't know what Wordle is, here's a quick explanation. It is a daily puzzle game produced by the New York Times where the objective is to guess a 5-letter secret word. The player has 6 guess attempts to do so, where each guess is just a valid 5-letter word. On each guess, the game provides feedback by telling if you if you guessed a letter correctly and placed in the correct spot, guessed a letter correctly but placed it in a incorrect spot, or if the letters you guessed weren't in the secret word. 
+On the off-chance that you don't know what Wordle is, here's a quick explanation. It is a daily puzzle game produced by the New York Times where the objective is to guess a 5-letter secret word. The player has 6 guess attempts to do so, where each guess is just a valid 5-letter word. On each guess, the game provides feedback by telling if you if you guessed a letter correctly and placed in the correct spot, guessed a letter correctly but placed it in a incorrect spot, or if the letters you guessed weren't in the secret word. In the original game, letters that were placed correctly were marked green, letters guessed correctly but incorrectly placed are marked yellow, and all other letters are marked grey. In my version, I decided to have letters marked as uppercase for correctly placed letters, lowercase for incorrectly placed letters, and returned periods for all other letters. 
 
 ### What did I create?
 
